@@ -1,7 +1,7 @@
 use macroquad::prelude::*;
 
-const SCREEN_WIDTH: f32 = 800.0;
-const SCREEN_HEIGHT: f32 = 600.0;
+const INITIAL_WIDTH: f32 = 800.0;
+const INITIAL_HEIGHT: f32 = 600.0;
 const PADDLE_WIDTH: f32 = 20.0;
 const PADDLE_HEIGHT: f32 = 100.0;
 const PADDLE_SPEED: f32 = 5.0;
@@ -27,8 +27,8 @@ impl Paddle {
 
     fn move_down(&mut self) {
         self.y += PADDLE_SPEED;
-        if self.y + PADDLE_HEIGHT > SCREEN_HEIGHT {
-            self.y = SCREEN_HEIGHT - PADDLE_HEIGHT;
+        if self.y + PADDLE_HEIGHT > screen_height() {
+            self.y = screen_height() - PADDLE_HEIGHT;
         }
     }
 
@@ -51,8 +51,8 @@ struct Ball {
 impl Ball {
     fn new() -> Self {
         Ball {
-            x: SCREEN_WIDTH / 2.0,
-            y: SCREEN_HEIGHT / 2.0,
+            x: screen_width() / 2.0,
+            y: screen_height() / 2.0,
             vx: BALL_SPEED,
             vy: BALL_SPEED,
         }
@@ -63,14 +63,14 @@ impl Ball {
         self.y += self.vy;
 
         // Bounce off top and bottom
-        if self.y <= 0.0 || self.y + BALL_SIZE >= SCREEN_HEIGHT {
+        if self.y <= 0.0 || self.y + BALL_SIZE >= screen_height() {
             self.vy = -self.vy;
         }
     }
 
     fn reset(&mut self, direction: f32) {
-        self.x = SCREEN_WIDTH / 2.0;
-        self.y = SCREEN_HEIGHT / 2.0;
+        self.x = screen_width() / 2.0;
+        self.y = screen_height() / 2.0;
         self.vx = BALL_SPEED * direction;
         self.vy = macroquad::rand::gen_range(-BALL_SPEED * 0.5, BALL_SPEED * 0.5);
     }
@@ -97,14 +97,24 @@ struct GameState {
 impl GameState {
     fn new() -> Self {
         GameState {
-            player1: Paddle::new(30.0, SCREEN_HEIGHT / 2.0 - PADDLE_HEIGHT / 2.0),
-            player2: Paddle::new(SCREEN_WIDTH - 50.0, SCREEN_HEIGHT / 2.0 - PADDLE_HEIGHT / 2.0),
+            player1: Paddle::new(30.0, screen_height() / 2.0 - PADDLE_HEIGHT / 2.0),
+            player2: Paddle::new(screen_width() - 50.0, screen_height() / 2.0 - PADDLE_HEIGHT / 2.0),
             ball: Ball::new(),
             score1: 0,
             score2: 0,
             game_over: false,
             winner: 0,
         }
+    }
+
+    fn on_resize(&mut self) {
+        // Reposition paddles to their respective sides after a resize
+        self.player1.x = 30.0;
+        self.player2.x = screen_width() - 50.0;
+
+        // Clamp paddles within the new screen bounds
+        self.player1.y = self.player1.y.clamp(0.0, screen_height() - PADDLE_HEIGHT);
+        self.player2.y = self.player2.y.clamp(0.0, screen_height() - PADDLE_HEIGHT);
     }
 
     fn check_collision(&mut self) {
@@ -143,7 +153,7 @@ impl GameState {
         }
 
         // Player 1 scores
-        if self.ball.x >= SCREEN_WIDTH {
+        if self.ball.x >= screen_width() {
             self.score1 += 1;
             self.ball.reset(-1.0);
             if self.score1 >= 7 {
@@ -186,16 +196,13 @@ impl GameState {
     }
 
     fn draw(&self) {
+        let sw = screen_width();
+        let sh = screen_height();
+
         clear_background(BLACK);
 
         // Draw center line
-        draw_rectangle(
-            SCREEN_WIDTH / 2.0 - 2.0,
-            0.0,
-            4.0,
-            SCREEN_HEIGHT,
-            GRAY,
-        );
+        draw_rectangle(sw / 2.0 - 2.0, 0.0, 4.0, sh, GRAY);
 
         // Draw paddles
         self.player1.draw(GREEN);
@@ -210,7 +217,7 @@ impl GameState {
         let text_size = measure_text(&score_text, None, font_size as u16, 1.0);
         draw_text(
             &score_text,
-            SCREEN_WIDTH / 2.0 - text_size.width / 2.0,
+            sw / 2.0 - text_size.width / 2.0,
             50.0,
             font_size,
             WHITE,
@@ -218,21 +225,15 @@ impl GameState {
 
         // Draw game over overlay
         if self.game_over {
-            draw_rectangle(
-                0.0,
-                0.0,
-                SCREEN_WIDTH,
-                SCREEN_HEIGHT,
-                Color::new(0.0, 0.0, 0.0, 0.7),
-            );
+            draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.0, 0.0, 0.0, 0.7));
 
             let winner_text = format!("Player {} Wins!", self.winner);
             let winner_font_size = 80.0;
             let winner_text_size = measure_text(&winner_text, None, winner_font_size as u16, 1.0);
             draw_text(
                 &winner_text,
-                SCREEN_WIDTH / 2.0 - winner_text_size.width / 2.0,
-                SCREEN_HEIGHT / 2.0 - 20.0,
+                sw / 2.0 - winner_text_size.width / 2.0,
+                sh / 2.0 - 20.0,
                 winner_font_size,
                 YELLOW,
             );
@@ -242,8 +243,8 @@ impl GameState {
             let restart_text_size = measure_text(restart_text, None, restart_font_size as u16, 1.0);
             draw_text(
                 restart_text,
-                SCREEN_WIDTH / 2.0 - restart_text_size.width / 2.0,
-                SCREEN_HEIGHT / 2.0 + 40.0,
+                sw / 2.0 - restart_text_size.width / 2.0,
+                sh / 2.0 + 40.0,
                 restart_font_size,
                 WHITE,
             );
@@ -254,8 +255,9 @@ impl GameState {
 fn window_conf() -> Conf {
     Conf {
         window_title: "Ping Pong".to_owned(),
-        window_width: SCREEN_WIDTH as i32,
-        window_height: SCREEN_HEIGHT as i32,
+        window_width: INITIAL_WIDTH as i32,
+        window_height: INITIAL_HEIGHT as i32,
+        window_resizable: true,
         ..Default::default()
     }
 }
@@ -263,8 +265,15 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut game = GameState::new();
+    let mut last_size = (screen_width(), screen_height());
 
     loop {
+        let current_size = (screen_width(), screen_height());
+        if current_size != last_size {
+            game.on_resize();
+            last_size = current_size;
+        }
+
         game.update();
         game.draw();
         next_frame().await
