@@ -6,7 +6,7 @@ const PADDLE_WIDTH: f32 = 20.0;
 const PADDLE_HEIGHT: f32 = 100.0;
 const PADDLE_SPEED: f32 = 5.0;
 const BALL_SIZE: f32 = 15.0;
-const BALL_SPEED: f32 = 4.0;
+const BALL_SPEED: f32 = 9.0;
 
 struct Paddle {
     x: f32,
